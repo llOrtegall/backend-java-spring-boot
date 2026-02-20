@@ -1,4 +1,7 @@
 package com.backend.ortega.repositories;
 
-public interface ProductRepository {
+import com.backend.ortega.entities.Product;
+import org.springframework.data.repository.CrudRepository;
+
+public interface ProductRepository extends CrudRepository<Product , Long> {
 }
