@@ -10,8 +10,9 @@ import { securityHeaders } from "./infrastructure/http/middlewares/security-head
 import { errorMapper } from "./infrastructure/http/middlewares/error-mapper.ts";
 import { authMiddleware } from "./infrastructure/http/middlewares/auth.ts";
 import { rateLimit } from "./infrastructure/http/middlewares/rate-limit.ts";
+import type { WsData } from "./infrastructure/ws/connection-registry.ts";
 
-const { auth, tokenSigner, rateLimiter } = buildApp();
+const { auth, users, rooms, messages, gateway, tokenSigner, rateLimiter } = buildApp();
 
 const corsM = cors(env.CORS_ORIGINS);
 const authM = authMiddleware(tokenSigner);
@@ -22,7 +23,7 @@ const rlRefresh = rateLimit(rateLimiter, "refresh", env.RATE_LIMIT_REFRESH_MAX, 
 const base = compose(requestId, corsM, securityHeaders, errorMapper);
 const baseAuth = compose(requestId, corsM, securityHeaders, errorMapper, authM);
 
-const server = Bun.serve({
+const server = Bun.serve<WsData>({
   port: env.PORT,
 
   routes: {
@@ -38,6 +39,7 @@ const server = Bun.serve({
       },
     },
 
+    // Auth
     "/api/v1/auth/register": {
       POST: compose(requestId, corsM, securityHeaders, errorMapper, rlRegister)(auth.register),
     },
@@ -65,14 +67,55 @@ const server = Bun.serve({
     "/api/v1/auth/password-reset/confirm": {
       POST: base(auth.confirmPasswordReset),
     },
+
+    // Users
+    "/api/v1/users/me": {
+      GET: baseAuth(users.getMe),
+      PATCH: baseAuth(users.updateMe),
+    },
+    "/api/v1/users/:id": {
+      GET: baseAuth(users.getById),
+    },
+
+    // Rooms
+    "/api/v1/rooms": {
+      GET: baseAuth(rooms.list),
+      POST: baseAuth(rooms.create),
+    },
+    "/api/v1/rooms/:id": {
+      GET: baseAuth(rooms.getOne),
+    },
+    "/api/v1/rooms/:id/members": {
+      POST: baseAuth(rooms.addMember),
+      DELETE: baseAuth(rooms.removeMember),
+    },
+
+    // Messages (REST fallback)
+    "/api/v1/rooms/:id/messages": {
+      GET: baseAuth(messages.listByRoom),
+      POST: baseAuth(messages.sendToRoom),
+    },
+    "/api/v1/messages/:id": {
+      PATCH: baseAuth(messages.edit),
+      DELETE: baseAuth(messages.delete),
+    },
   },
 
-  fetch(req: Request): Response | Promise<Response> {
+  async fetch(req: Request, server): Promise<Response | undefined> {
+    const url = new URL(req.url);
+
+    if (url.pathname === "/ws") {
+      return gateway.upgrade(req, server);
+    }
+
     if (req.method === "OPTIONS") {
       return compose(corsM)((_req, _ctx) => new Response(null, { status: 204 }))(req);
     }
+
     return Response.json({ error: "Not Found" }, { status: 404 });
   },
+
+  websocket: gateway.handlers,
 });
 
 logger.info({ port: server.port }, "Server started");
