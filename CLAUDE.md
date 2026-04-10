@@ -7,8 +7,8 @@ Plan detallado completo en: `~/.claude/plans/vale-mira-est-servicio-federated-go
 
 - [x] **Fase 0 — Setup** — env, logger, migrator, docker-compose, `/health`, `/ready`
 - [x] **Fase 1 — Auth REST** — register, login, refresh (rotación + detección de reuso), logout, /me, verify-email, password-reset. JWT (jose) + argon2id + refresh opaco hasheado con pepper. Cookie httpOnly para web, body para mobile.
-- [ ] **Fase 2 — Users + Rooms REST** — `0002_rooms.sql`, `pg-room-repository`, use-cases users (get, update-profile) y rooms (create-dm, create-group, add-member, remove-member, list-my-rooms, get-room)
-- [ ] **Fase 3 — WebSocket + Messages** — `redis-message-bus`, `connection-registry` con refcount, `event-router`, handlers de chat, use-cases messages, REST fallback messages
+- [x] **Fase 2 — Users + Rooms REST** — `0002_rooms.sql`, `pg-room-repository`, use-cases users (get, update-profile) y rooms (create-dm, create-group, add-member, remove-member, list-my-rooms, get-room)
+- [x] **Fase 3 — WebSocket + Messages** — `redis-message-bus`, `connection-registry` con refcount, `event-router`, handlers de chat, use-cases messages, REST fallback messages
 - [ ] **Fase 4 — Presence + Typing + Read receipts** — `redis-presence-store`, heartbeat, online/offline, chat.typing, chat.read
 - [ ] **Fase 5 — Attachments** — `s3-object-storage` (R2/MinIO), presign PUT, confirm, `chat.send` con attachmentKey
 - [ ] **Fase 6 — Hardening + tests** — rate limit Redis, security headers, pino redact, graceful shutdown, suite integration
