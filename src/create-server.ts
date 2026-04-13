@@ -59,11 +59,12 @@ export function createServer(ctx: AppContext, port: number): ReturnType<typeof B
       "/api/v1/auth/password-reset/request": { POST: base(auth.requestPasswordReset) },
       "/api/v1/auth/password-reset/confirm": { POST: base(auth.confirmPasswordReset) },
 
+      "/api/v1/users": { GET: baseAuth(users.list) },
       "/api/v1/users/me": { GET: baseAuth(users.getMe), PATCH: baseAuth(users.updateMe) },
       "/api/v1/users/:id": { GET: baseAuth(users.getById) },
 
       "/api/v1/rooms": { GET: baseAuth(rooms.list), POST: baseAuth(rooms.create) },
-      "/api/v1/rooms/:id": { GET: baseAuth(rooms.getOne) },
+      "/api/v1/rooms/:id": { GET: baseAuth(rooms.getOne), DELETE: baseAuth(rooms.delete) },
       "/api/v1/rooms/:id/members": {
         POST: baseAuth(rooms.addMember),
         DELETE: baseAuth(rooms.removeMember),
