@@ -7,6 +7,7 @@ let s2: Awaited<ReturnType<typeof startTestServer>>;
 beforeAll(async () => {
   // Two instances sharing the same Postgres + Redis
   [s1, s2] = await Promise.all([startTestServer(), startTestServer()]);
+  await truncateTables();
 });
 
 afterEach(async () => {

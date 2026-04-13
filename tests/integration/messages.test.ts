@@ -5,6 +5,7 @@ let server: Awaited<ReturnType<typeof startTestServer>>;
 
 beforeAll(async () => {
   server = await startTestServer();
+  await truncateTables();
 });
 
 afterEach(async () => {
