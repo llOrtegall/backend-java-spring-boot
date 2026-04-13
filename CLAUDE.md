@@ -32,7 +32,10 @@ Plan detallado completo en: `~/.claude/plans/vale-mira-est-servicio-federated-go
 sudo docker compose -f docker-compose.dev.yml up -d   # levantar servicios
 bun run migrate                                        # correr migraciones
 bun run dev                                            # servidor con hot reload
-bun test                                               # todos los tests
+bun run seed                                           # poblar DB dev
+bun test                                               # todos los tests (secuencial, --max-concurrency 1)
+bun run test:unit                                      # solo tests unit (sin DB/Redis)
+bun run test:integration                               # tests integration + WS
 ```
 
 ---
