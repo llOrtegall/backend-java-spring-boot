@@ -8,4 +8,5 @@ export interface UserRepository {
     id: string,
     patch: Partial<Pick<User, "displayName" | "avatarUrl" | "emailVerifiedAt" | "passwordHash">>,
   ): Promise<User>;
+  listAll(excludeId: string): Promise<User[]>;
 }
