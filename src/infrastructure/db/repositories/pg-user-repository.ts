@@ -49,6 +49,13 @@ export class PgUserRepository implements UserRepository {
     return row ? mapRow(row) : null;
   }
 
+  async listAll(excludeId: string): Promise<User[]> {
+    const rows = await this.sql<Row[]>`
+      SELECT * FROM users WHERE id != ${excludeId} ORDER BY display_name
+    `;
+    return rows.map(mapRow);
+  }
+
   async update(
     id: string,
     patch: Partial<Pick<User, "displayName" | "avatarUrl" | "emailVerifiedAt" | "passwordHash">>,
