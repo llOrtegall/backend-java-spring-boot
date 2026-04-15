@@ -22,11 +22,6 @@ export class ConfirmPasswordReset {
 
     const passwordHash = await this.deps.passwordHasher.hash(newPassword);
     await this.deps.userRepo.update(token.userId, { passwordHash });
-
-    // Revoke all active refresh tokens — force re-login on all devices
-    const active = await this.deps.refreshTokenRepo.listActiveByUser(token.userId);
-    for (const rt of active) {
-      await this.deps.refreshTokenRepo.markRevoked(rt.id);
-    }
+    await this.deps.refreshTokenRepo.revokeAllForUser(token.userId);
   }
 }
