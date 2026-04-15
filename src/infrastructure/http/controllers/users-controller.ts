@@ -1,12 +1,14 @@
 import type { RouteHandler } from "../compose.ts";
 import type { GetUser } from "../../../application/use-cases/users/get-user.ts";
 import type { UpdateProfile } from "../../../application/use-cases/users/update-profile.ts";
+import type { ListUsers } from "../../../application/use-cases/users/list-users.ts";
 import { validate } from "../validation/validate.ts";
 import { UpdateProfileSchema } from "../../../application/dtos/user-dtos.ts";
 
 interface Deps {
   getUser: GetUser;
   updateProfile: UpdateProfile;
+  listUsers: ListUsers;
 }
 
 export class UsersController {
@@ -27,5 +29,10 @@ export class UsersController {
     const id = new URL(req.url).pathname.split("/").pop()!;
     const user = await this.deps.getUser.execute(id);
     return Response.json({ user });
+  };
+
+  list: RouteHandler = async (_req, ctx) => {
+    const users = await this.deps.listUsers.execute(ctx.userId!);
+    return Response.json({ users });
   };
 }
