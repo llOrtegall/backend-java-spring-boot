@@ -5,6 +5,7 @@ import type { AddMember } from "../../../application/use-cases/rooms/add-member.
 import type { RemoveMember } from "../../../application/use-cases/rooms/remove-member.ts";
 import type { ListMyRooms } from "../../../application/use-cases/rooms/list-my-rooms.ts";
 import type { GetRoom } from "../../../application/use-cases/rooms/get-room.ts";
+import type { DeleteRoom } from "../../../application/use-cases/rooms/delete-room.ts";
 import { validate } from "../validation/validate.ts";
 import {
   CreateDirectRoomSchema,
@@ -20,6 +21,7 @@ interface Deps {
   removeMember: RemoveMember;
   listMyRooms: ListMyRooms;
   getRoom: GetRoom;
+  deleteRoom: DeleteRoom;
 }
 
 function roomId(req: Request): string {
@@ -62,6 +64,11 @@ export class RoomsController {
   removeMember: RouteHandler = async (req, ctx) => {
     const { userId } = validate(RemoveMemberSchema, await req.json());
     await this.deps.removeMember.execute(ctx.userId!, roomId(req), userId);
+    return new Response(null, { status: 204 });
+  };
+
+  delete: RouteHandler = async (req, ctx) => {
+    await this.deps.deleteRoom.execute(ctx.userId!, roomId(req));
     return new Response(null, { status: 204 });
   };
 }
