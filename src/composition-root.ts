@@ -6,6 +6,7 @@ import { redisPublisher, redisSubscriber } from "./infrastructure/redis/client.t
 import { JoseTokenSigner } from "./infrastructure/jwt/jose-token-signer.ts";
 import { BunPasswordHasher } from "./infrastructure/crypto/bun-password-hasher.ts";
 import { ConsoleEmailSender } from "./infrastructure/email/console-email-sender.ts";
+import type { EmailSender } from "./domain/ports/services/email-sender.ts";
 import { SystemClock } from "./infrastructure/services/system-clock.ts";
 import { SystemIdGenerator } from "./infrastructure/services/system-id-generator.ts";
 import { RedisRateLimiter } from "./infrastructure/redis/redis-rate-limiter.ts";
@@ -64,6 +65,10 @@ import { WsGateway } from "./infrastructure/ws/gateway.ts";
 import type { TokenSigner } from "./domain/ports/services/token-signer.ts";
 import type { RateLimiter } from "./domain/ports/services/rate-limiter.ts";
 
+export interface BuildAppOverrides {
+  emailSender?: EmailSender;
+}
+
 export interface AppContext {
   auth: AuthController;
   users: UsersController;
@@ -75,14 +80,14 @@ export interface AppContext {
   rateLimiter: RateLimiter;
 }
 
-export function buildApp(): AppContext {
+export function buildApp(overrides: BuildAppOverrides = {}): AppContext {
   const tokenSigner = new JoseTokenSigner({
     accessSecret: env.JWT_ACCESS_SECRET,
     accessTtlSec: env.ACCESS_TTL,
     refreshPepper: env.JWT_REFRESH_PEPPER,
   });
   const passwordHasher = new BunPasswordHasher();
-  const emailSender = new ConsoleEmailSender(logger);
+  const emailSender = overrides.emailSender ?? new ConsoleEmailSender(logger);
   const clock = new SystemClock();
   const idGenerator = new SystemIdGenerator();
   const rateLimiter = new RedisRateLimiter(redisPublisher);
@@ -134,6 +139,7 @@ export function buildApp(): AppContext {
     clock,
     refreshTtlSec: env.REFRESH_TTL,
     refreshPepper: env.JWT_REFRESH_PEPPER,
+    graceWindowSec: env.REFRESH_GRACE_WINDOW_SECS,
   });
 
   const revokeSession = new RevokeSession(refreshTokenRepo, env.JWT_REFRESH_PEPPER);

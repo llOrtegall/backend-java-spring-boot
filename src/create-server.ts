@@ -20,9 +20,10 @@ export function createServer(ctx: AppContext, port: number): ReturnType<typeof B
   const rlRegister = rateLimit(rateLimiter, "register", env.RATE_LIMIT_REGISTER_MAX, env.RATE_LIMIT_REGISTER_WINDOW);
   const rlLogin = rateLimit(rateLimiter, "login", env.RATE_LIMIT_LOGIN_MAX, env.RATE_LIMIT_LOGIN_WINDOW);
   const rlRefresh = rateLimit(rateLimiter, "refresh", env.RATE_LIMIT_REFRESH_MAX, env.RATE_LIMIT_REFRESH_WINDOW);
+  const rlDefault = rateLimit(rateLimiter, "default", env.RATE_LIMIT_DEFAULT_MAX, env.RATE_LIMIT_DEFAULT_WINDOW, { keyBy: "user" });
 
   const base = compose(requestId, corsM, securityHeaders, errorMapper);
-  const baseAuth = compose(requestId, corsM, securityHeaders, errorMapper, authM);
+  const baseAuth = compose(requestId, corsM, securityHeaders, errorMapper, authM, rlDefault);
 
   return Bun.serve<WsData>({
     port,

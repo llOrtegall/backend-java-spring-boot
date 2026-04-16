@@ -12,6 +12,7 @@ const EnvSchema = z.object({
   JWT_REFRESH_PEPPER: z.string().min(32).default("dev-refresh-pepper-change-in-production-x"),
   ACCESS_TTL: z.coerce.number().int().default(900),
   REFRESH_TTL: z.coerce.number().int().default(2592000),
+  REFRESH_GRACE_WINDOW_SECS: z.coerce.number().int().min(0).default(0),
 
   CORS_ORIGINS: z
     .string()
