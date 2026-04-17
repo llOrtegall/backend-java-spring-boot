@@ -47,6 +47,11 @@ export class PgRefreshTokenRepository implements RefreshTokenRepository {
     `;
   }
 
+  async findById(id: string): Promise<RefreshToken | null> {
+    const [row] = await this.sql<Row[]>`SELECT * FROM refresh_tokens WHERE id = ${id}`;
+    return row ? mapRow(row) : null;
+  }
+
   async findByHash(hash: string): Promise<RefreshToken | null> {
     const [row] = await this.sql<Row[]>`
       SELECT * FROM refresh_tokens WHERE token_hash = ${hash}
@@ -67,6 +72,14 @@ export class PgRefreshTokenRepository implements RefreshTokenRepository {
       UPDATE refresh_tokens
       SET revoked_at = now()
       WHERE family_id = ${familyId} AND revoked_at IS NULL
+    `;
+  }
+
+  async revokeAllForUser(userId: string): Promise<void> {
+    await this.sql`
+      UPDATE refresh_tokens
+      SET revoked_at = now()
+      WHERE user_id = ${userId} AND revoked_at IS NULL
     `;
   }
 

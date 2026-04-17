@@ -11,6 +11,7 @@ export class ConnectionRegistry {
   private readonly userConns = new Map<string, Set<ServerWebSocket<WsData>>>();
   private readonly roomLocalSubs = new Map<string, Set<ServerWebSocket<WsData>>>();
   private readonly roomBusUnsub = new Map<string, { unsub: Unsubscribe; refCount: number }>();
+  private presenceUnsub: Unsubscribe | null = null;
 
   constructor(private readonly bus: MessageBus) {}
 
@@ -19,6 +20,11 @@ export class ConnectionRegistry {
     let conns = this.userConns.get(userId);
     if (!conns) { conns = new Set(); this.userConns.set(userId, conns); }
     conns.add(ws);
+
+    if (!this.presenceUnsub) {
+      this.bus.subscribe("presence:global", (event) => this.fanOutPresence(event))
+        .then(unsub => { this.presenceUnsub = unsub; });
+    }
   }
 
   unregister(ws: ServerWebSocket<WsData>): void {
@@ -29,6 +35,10 @@ export class ConnectionRegistry {
     if (conns) {
       conns.delete(ws);
       if (conns.size === 0) this.userConns.delete(ws.data.userId);
+    }
+    if (this.userConns.size === 0 && this.presenceUnsub) {
+      this.presenceUnsub();
+      this.presenceUnsub = null;
     }
   }
 
@@ -63,6 +73,16 @@ export class ConnectionRegistry {
       if (existing.refCount <= 0) {
         existing.unsub();
         this.roomBusUnsub.delete(roomId);
+      }
+    }
+  }
+
+  private fanOutPresence(event: unknown): void {
+    const e = event as Record<string, unknown>;
+    const envelope = JSON.stringify({ type: e.kind, payload: { userId: e.userId }, ts: Date.now() });
+    for (const conns of this.userConns.values()) {
+      for (const ws of conns) {
+        ws.send(envelope);
       }
     }
   }
