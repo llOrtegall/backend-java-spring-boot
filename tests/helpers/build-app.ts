@@ -3,10 +3,12 @@ import { createServer } from "../../src/create-server.ts";
 import { migrate } from "../../src/infrastructure/db/migrator.ts";
 import { sql } from "../../src/infrastructure/db/client.ts";
 import { redisPublisher } from "../../src/infrastructure/redis/client.ts";
+import { FakeEmailSender } from "./fakes.ts";
 
 export async function startTestServer() {
   await migrate();
-  const ctx = buildApp();
+  const emailSender = new FakeEmailSender();
+  const ctx = buildApp({ emailSender });
   const server = createServer(ctx, 0);
   const base = `http://localhost:${server.port}`;
   const wsBase = `ws://localhost:${server.port}`;
@@ -43,7 +45,7 @@ export async function startTestServer() {
     });
   }
 
-  return { server, base, wsBase, post, get, patch, del };
+  return { server, base, wsBase, post, get, patch, del, emailSender };
 }
 
 export async function truncateTables() {

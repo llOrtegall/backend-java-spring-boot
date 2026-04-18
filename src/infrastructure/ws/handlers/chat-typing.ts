@@ -4,6 +4,7 @@ import type { ClientEnvelope } from "../envelope.ts";
 import type { MessageBus } from "../../../domain/ports/services/message-bus.ts";
 import type { RoomRepository } from "../../../domain/ports/repositories/room-repository.ts";
 import { validate } from "../../http/validation/validate.ts";
+import { buildAck } from "../envelope.ts";
 import { ChatTypingPayloadSchema } from "../../../application/dtos/ws-events.ts";
 
 export async function handleChatTyping(
@@ -21,4 +22,5 @@ export async function handleChatTyping(
     roomId,
     userId: ws.data.userId,
   });
+  ws.send(buildAck(envelope.refId, {}));
 }
