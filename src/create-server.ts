@@ -13,7 +13,7 @@ import type { AppContext } from "./composition-root.ts";
 import { env } from "./infrastructure/config/env.ts";
 
 export function createServer(ctx: AppContext, port: number): ReturnType<typeof Bun.serve<WsData>> {
-  const { auth, users, rooms, messages, attachments, gateway, tokenSigner, rateLimiter } = ctx;
+  const { auth, users, rooms, messages, attachments, ws, gateway, tokenSigner, rateLimiter } = ctx;
 
   const corsM = cors(env.CORS_ORIGINS);
   const authM = authMiddleware(tokenSigner);
@@ -69,6 +69,8 @@ export function createServer(ctx: AppContext, port: number): ReturnType<typeof B
         DELETE: baseAuth(rooms.removeMember),
       },
 
+      "/api/v1/ws/ticket": { POST: baseAuth(ws.issueTicket) },
+
       "/api/v1/attachments/presign": { POST: baseAuth(attachments.presign) },
       "/api/v1/attachments/confirm": { GET: baseAuth(attachments.confirm) },
 
@@ -86,7 +88,7 @@ export function createServer(ctx: AppContext, port: number): ReturnType<typeof B
       const url = new URL(req.url);
       if (url.pathname === "/ws") return gateway.upgrade(req, server);
       if (req.method === "OPTIONS") {
-        return compose(corsM)((_r, _c) => new Response(null, { status: 204 }))(req);
+        return corsM(req, { requestId: "", userId: null }, async () => new Response(null, { status: 204 }));
       }
       return Response.json({ error: "Not Found" }, { status: 404 });
     },

@@ -58,9 +58,12 @@ import { RoomsController } from "./infrastructure/http/controllers/rooms-control
 import { MessagesController } from "./infrastructure/http/controllers/messages-controller.ts";
 import { AttachmentsController } from "./infrastructure/http/controllers/attachments-controller.ts";
 import { S3ObjectStorage } from "./infrastructure/storage/s3-object-storage.ts";
+import { RedisWsTicketStore } from "./infrastructure/redis/redis-ws-ticket-store.ts";
 import { ConnectionRegistry } from "./infrastructure/ws/connection-registry.ts";
 import { EventRouter } from "./infrastructure/ws/event-router.ts";
 import { WsGateway } from "./infrastructure/ws/gateway.ts";
+import { IssueWsTicket } from "./application/use-cases/ws/issue-ws-ticket.ts";
+import { WsController } from "./infrastructure/http/controllers/ws-controller.ts";
 
 import type { TokenSigner } from "./domain/ports/services/token-signer.ts";
 import type { RateLimiter } from "./domain/ports/services/rate-limiter.ts";
@@ -75,6 +78,7 @@ export interface AppContext {
   rooms: RoomsController;
   messages: MessagesController;
   attachments: AttachmentsController;
+  ws: WsController;
   gateway: WsGateway;
   tokenSigner: TokenSigner;
   rateLimiter: RateLimiter;
@@ -226,6 +230,10 @@ export function buildApp(overrides: BuildAppOverrides = {}): AppContext {
   const markUserOffline = new MarkUserOffline({ presenceStore, bus });
   const heartbeat = new Heartbeat(presenceStore);
 
+  const ticketStore = new RedisWsTicketStore(redisPublisher);
+  const issueWsTicket = new IssueWsTicket({ ticketStore, ticketTtlSec: env.WS_TICKET_TTL });
+  const ws = new WsController({ issueWsTicket });
+
   const registry = new ConnectionRegistry(bus);
   const router = new EventRouter({
     registry,
@@ -238,11 +246,11 @@ export function buildApp(overrides: BuildAppOverrides = {}): AppContext {
     heartbeat,
     presenceTtlSec: env.WS_PRESENCE_TTL,
   });
-  const gateway = new WsGateway(registry, router, tokenSigner, idGenerator, {
+  const gateway = new WsGateway(registry, router, tokenSigner, ticketStore, idGenerator, {
     markUserOnline,
     markUserOffline,
     presenceTtlSec: env.WS_PRESENCE_TTL,
   });
 
-  return { auth, users, rooms, messages: messagesCtrl, attachments, gateway, tokenSigner, rateLimiter };
+  return { auth, users, rooms, messages: messagesCtrl, attachments, ws, gateway, tokenSigner, rateLimiter };
 }

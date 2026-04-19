@@ -42,6 +42,7 @@ const EnvSchema = z.object({
 
   WS_HEARTBEAT_INTERVAL: z.coerce.number().int().default(20),
   WS_PRESENCE_TTL: z.coerce.number().int().default(60),
+  WS_TICKET_TTL: z.coerce.number().int().default(30),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
