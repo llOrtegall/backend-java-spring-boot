@@ -29,6 +29,7 @@ function makeSut() {
     clock,
     refreshTtlSec: 2592000,
     refreshPepper: PEPPER,
+    graceWindowSec: 0,
   });
 
   return { sut, repo, clock };

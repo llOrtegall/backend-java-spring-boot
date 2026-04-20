@@ -79,3 +79,131 @@ describe("Auth — refresh + me + logout", () => {
     expect(logoutRes.status).toBe(204);
   });
 });
+
+describe("Auth — email verification", () => {
+  test("confirms email with valid token", async () => {
+    const reg = await server.post("/api/v1/auth/register", {
+      email: "verify@example.com",
+      password: "password123",
+      displayName: "Verify",
+    });
+    const { accessToken } = await reg.json() as { accessToken: string };
+
+    // Clear emails from register's fire-and-forget verification
+    server.emailSender.sent = [];
+
+    const reqRes = await server.post("/api/v1/auth/verify-email/request", {}, accessToken);
+    expect(reqRes.status).toBe(204);
+
+    const link = server.emailSender.sent[0]?.link ?? "";
+    expect(link).toBeTruthy();
+    const token = new URL(link).searchParams.get("token")!;
+
+    const confirmRes = await server.post("/api/v1/auth/verify-email/confirm", { token });
+    expect(confirmRes.status).toBe(204);
+
+    const meRes = await server.get("/api/v1/auth/me", accessToken);
+    const { user } = await meRes.json() as { user: { emailVerifiedAt: string | null } };
+    expect(user.emailVerifiedAt).not.toBeNull();
+  });
+
+  test("invalid verification token returns 401", async () => {
+    const res = await server.post("/api/v1/auth/verify-email/confirm", { token: "bad-token" });
+    expect(res.status).toBe(401);
+  });
+
+  test("request is idempotent for already-verified user", async () => {
+    const reg = await server.post("/api/v1/auth/register", {
+      email: "verified2@example.com",
+      password: "password123",
+      displayName: "V2",
+    });
+    const { accessToken } = await reg.json() as { accessToken: string };
+
+    server.emailSender.sent = [];
+    await server.post("/api/v1/auth/verify-email/request", {}, accessToken);
+    const token = new URL(server.emailSender.sent[0]?.link ?? "").searchParams.get("token")!;
+    await server.post("/api/v1/auth/verify-email/confirm", { token });
+
+    // Second request on already-verified user should be a no-op (204, no email sent)
+    server.emailSender.sent = [];
+    const r = await server.post("/api/v1/auth/verify-email/request", {}, accessToken);
+    expect(r.status).toBe(204);
+    expect(server.emailSender.sent.length).toBe(0);
+  });
+});
+
+describe("Auth — password reset", () => {
+  test("full reset flow", async () => {
+    await server.post("/api/v1/auth/register", {
+      email: "reset@example.com",
+      password: "oldpassword",
+      displayName: "Reset",
+    });
+
+    const reqRes = await server.post("/api/v1/auth/password-reset/request", {
+      email: "reset@example.com",
+    });
+    expect(reqRes.status).toBe(204);
+
+    const link = server.emailSender.sent.find(e => e.kind === "reset")?.link;
+    expect(link).toBeTruthy();
+    const token = new URL(link!).searchParams.get("token")!;
+
+    const confirmRes = await server.post("/api/v1/auth/password-reset/confirm", {
+      token,
+      newPassword: "newpassword123",
+    });
+    expect(confirmRes.status).toBe(204);
+
+    // Old password must fail
+    const oldLogin = await server.post("/api/v1/auth/login", {
+      email: "reset@example.com",
+      password: "oldpassword",
+    });
+    expect(oldLogin.status).toBe(401);
+
+    // New password must work
+    const newLogin = await server.post("/api/v1/auth/login", {
+      email: "reset@example.com",
+      password: "newpassword123",
+    });
+    expect(newLogin.status).toBe(200);
+  });
+
+  test("unknown email returns 204 without leak", async () => {
+    const res = await server.post("/api/v1/auth/password-reset/request", {
+      email: "nobody@example.com",
+    });
+    expect(res.status).toBe(204);
+  });
+
+  test("invalid reset token returns 401", async () => {
+    const res = await server.post("/api/v1/auth/password-reset/confirm", {
+      token: "bad-token",
+      newPassword: "newpassword123",
+    });
+    expect(res.status).toBe(401);
+  });
+
+  test("token is single-use", async () => {
+    await server.post("/api/v1/auth/register", {
+      email: "singleuse@example.com",
+      password: "oldpassword",
+      displayName: "S",
+    });
+    await server.post("/api/v1/auth/password-reset/request", { email: "singleuse@example.com" });
+
+    const link = server.emailSender.sent.find(e => e.kind === "reset")?.link;
+    const token = new URL(link!).searchParams.get("token")!;
+
+    await server.post("/api/v1/auth/password-reset/confirm", { token, newPassword: "pass1" });
+
+    // Second use of same token should fail
+    const res = await server.post("/api/v1/auth/password-reset/confirm", {
+      token,
+      newPassword: "pass2",
+    });
+    expect(res.status).toBe(401);
+  });
+});

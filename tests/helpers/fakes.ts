@@ -106,6 +106,7 @@ export class InMemoryRefreshTokenRepo implements RefreshTokenRepository {
   async insert(record: Omit<RefreshToken, "createdAt">): Promise<void> {
     this.store.set(record.id, { ...record, createdAt: new Date() });
   }
+  async findById(id: string) { return this.store.get(id) ?? null; }
   async findByHash(hash: string) {
     return [...this.store.values()].find(t => t.tokenHash === hash) ?? null;
   }
@@ -116,6 +117,11 @@ export class InMemoryRefreshTokenRepo implements RefreshTokenRepository {
   async revokeFamily(familyId: string) {
     for (const t of this.store.values()) {
       if (t.familyId === familyId) t.revokedAt = new Date();
+    }
+  }
+  async revokeAllForUser(userId: string) {
+    for (const t of this.store.values()) {
+      if (t.userId === userId && !t.revokedAt) t.revokedAt = new Date();
     }
   }
   async listActiveByUser(userId: string) {
