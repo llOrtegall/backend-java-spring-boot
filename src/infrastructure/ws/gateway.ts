@@ -2,6 +2,7 @@ import type { ServerWebSocket, WebSocketHandler } from "bun";
 import type { WsData, ConnectionRegistry } from "./connection-registry.ts";
 import type { EventRouter } from "./event-router.ts";
 import type { TokenSigner } from "../../domain/ports/services/token-signer.ts";
+import type { WsTicketStore } from "../../domain/ports/services/ws-ticket-store.ts";
 import type { IdGenerator } from "../../domain/ports/services/id-generator.ts";
 import type { MarkUserOnline } from "../../application/use-cases/presence/mark-user-online.ts";
 import type { MarkUserOffline } from "../../application/use-cases/presence/mark-user-offline.ts";
@@ -18,25 +19,30 @@ export class WsGateway {
     private readonly registry: ConnectionRegistry,
     private readonly router: EventRouter,
     private readonly tokenSigner: TokenSigner,
+    private readonly ticketStore: WsTicketStore,
     private readonly idGenerator: IdGenerator,
     private readonly presence: PresenceDeps,
   ) {}
 
   async upgrade(req: Request, server: Bun.Server<WsData>): Promise<Response | undefined> {
     const url = new URL(req.url);
-    const token = url.searchParams.get("token");
 
-    if (!token) {
-      return new Response("Missing token", { status: 401 });
-    }
+    let userId: string | null = null;
 
-    const claims = await this.tokenSigner.verifyAccess(token);
-    if (!claims) {
-      return new Response("Invalid or expired token", { status: 401 });
+    const ticket = url.searchParams.get("ticket");
+    if (ticket) {
+      userId = await this.ticketStore.consume(ticket);
+      if (!userId) return new Response("Invalid or expired ticket", { status: 401 });
+    } else {
+      const token = url.searchParams.get("token");
+      if (!token) return new Response("Missing token or ticket", { status: 401 });
+      const claims = await this.tokenSigner.verifyAccess(token);
+      if (!claims) return new Response("Invalid or expired token", { status: 401 });
+      userId = claims.sub;
     }
 
     const data: WsData = {
-      userId: claims.sub,
+      userId,
       connId: this.idGenerator.uuidv7(),
       rooms: new Set(),
     };

@@ -86,7 +86,8 @@ export class PgMessageRepository implements MessageRepository {
 
   async softDelete(id: string): Promise<Message> {
     const [row] = await this.sql<Row[]>`
-      UPDATE messages SET deleted_at = now(), body = ''
+      UPDATE messages
+      SET deleted_at = now(), body = '', attachment_key = NULL, attachment_meta = NULL
       WHERE id = ${id}
       RETURNING *
     `;
