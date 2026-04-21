@@ -233,6 +233,8 @@ export class InMemoryMessageRepo implements MessageRepository {
     if (!msg) throw new Error("Message not found");
     msg.deletedAt = new Date();
     msg.body = "";
+    msg.attachmentKey = null;
+    msg.attachmentMeta = null;
     return msg;
   }
 }
