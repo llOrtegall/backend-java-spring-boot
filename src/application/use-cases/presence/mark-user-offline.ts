@@ -10,7 +10,8 @@ export class MarkUserOffline {
   constructor(private readonly deps: Deps) {}
 
   async execute(userId: string, connId: string): Promise<void> {
-    await this.deps.presenceStore.markOffline(userId, connId);
+    const removed = await this.deps.presenceStore.markOffline(userId, connId);
+    if (!removed) return;
     const stillOnline = await this.deps.presenceStore.isOnline(userId);
     if (!stillOnline) {
       await this.deps.bus.publish("presence:global", {
