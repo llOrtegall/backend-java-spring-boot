@@ -43,7 +43,7 @@ export class PgMessageRepository implements MessageRepository {
          ${msg.editedAt}, ${msg.deletedAt}, ${msg.createdAt})
       ON CONFLICT (sender_id, client_message_id)
         WHERE client_message_id IS NOT NULL
-      DO UPDATE SET id = EXCLUDED.id
+      DO UPDATE SET created_at = messages.created_at
       RETURNING *
     `;
     return mapRow(row!);
