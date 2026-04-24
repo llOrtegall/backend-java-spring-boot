@@ -3,12 +3,13 @@ import { createServer } from "../../src/create-server.ts";
 import { migrate } from "../../src/infrastructure/db/migrator.ts";
 import { sql } from "../../src/infrastructure/db/client.ts";
 import { redisPublisher } from "../../src/infrastructure/redis/client.ts";
-import { FakeEmailSender } from "./fakes.ts";
+import { FakeEmailSender, FakeObjectStorage } from "./fakes.ts";
 
 export async function startTestServer() {
   await migrate();
   const emailSender = new FakeEmailSender();
-  const ctx = buildApp({ emailSender });
+  const objectStorage = new FakeObjectStorage();
+  const ctx = buildApp({ emailSender, objectStorage });
   const server = createServer(ctx, 0);
   const base = `http://localhost:${server.port}`;
   const wsBase = `ws://localhost:${server.port}`;
@@ -38,14 +39,18 @@ export async function startTestServer() {
     });
   }
 
-  async function del(path: string, token: string) {
+  async function del(path: string, token: string, body?: unknown) {
     return fetch(`${base}${path}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
   }
 
-  return { server, base, wsBase, post, get, patch, del, emailSender };
+  return { server, base, wsBase, post, get, patch, del, emailSender, objectStorage };
 }
 
 export async function truncateTables() {
